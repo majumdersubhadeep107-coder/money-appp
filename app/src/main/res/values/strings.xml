@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">PaiseJar</string>
+    <string name="partner_status_short">BANK NOT LINKED</string>
+    <string name="sandbox_badge_label">SANDBOX PREVIEW • NOT REAL MONEY</string>
+    <string name="no_partner_disclaimer">No bank or UPI partner connected. Real-money transfers stay disabled.</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_activity">Activity</string>
+    <string name="nav_goals">Goals</string>
+    <string name="nav_rules">Rules</string>
+    <string name="nav_profile">Profile</string>
+</resources>

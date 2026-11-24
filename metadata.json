@@ -1,0 +1,6 @@
+{
+  "name": "PaiseJar",
+  "description": "India-focused automatic round-up savings prototype with demo transactions, custom saving rules, goals, and monthly summaries.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

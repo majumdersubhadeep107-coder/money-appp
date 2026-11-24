@@ -1,0 +1,243 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isBoundedStringList(arr, maxLen) {
+      return arr is list && arr.size() <= maxLen && (arr.size() == 0 || arr[0] is string);
+    }
+
+    function isValidUserAccount(data, userId) {
+      return data.userId == userId &&
+             data.displayName is string && data.displayName.size() <= 60 &&
+             data.dataConsentAccepted is bool &&
+             data.consentVersion is string && data.consentVersion.size() >= 1 && data.consentVersion.size() <= 24 &&
+             data.providerConnectionStatus == 'NOT_CONNECTED' &&
+             data.notificationsEnabled is bool &&
+             data.weeklyDigestEnabled is bool &&
+             data.roundUpTargetRupees is int && data.roundUpTargetRupees >= 10 && data.roundUpTargetRupees <= 500 &&
+             (data.roundUpTargetRupees % 10 == 0) &&
+             data.maxPerPurchaseRupees is number && data.maxPerPurchaseRupees >= 10 && data.maxPerPurchaseRupees <= 500 &&
+             data.weeklyCapRupees is number && data.weeklyCapRupees >= 50 && data.weeklyCapRupees <= 10000 &&
+             data.monthlyCapRupees is number && data.monthlyCapRupees >= data.weeklyCapRupees && data.monthlyCapRupees <= 50000 &&
+             data.minTransactionAmountRupees is number && data.minTransactionAmountRupees >= 0 && data.minTransactionAmountRupees <= 1000 &&
+             isBoundedStringList(data.excludedCategories, 10) &&
+             isBoundedStringList(data.excludedMerchants, 30) &&
+             data.paused is bool &&
+             data.selectedGoalId is string && data.selectedGoalId.size() <= 128 &&
+             data.monthlyGoalTargetRupees is number && data.monthlyGoalTargetRupees >= 100 && data.monthlyGoalTargetRupees <= 100000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGoal(data, userId) {
+      return data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+             data.targetAmountRupees is number && data.targetAmountRupees >= 100 && data.targetAmountRupees <= 10000000 &&
+             data.confirmedBalanceRupees is number && data.confirmedBalanceRupees == 0 &&
+             data.pendingTransferRupees is number && data.pendingTransferRupees == 0 &&
+             data.failedTransferCount is int && data.failedTransferCount >= 0 && data.failedTransferCount <= 1000 &&
+             (!('targetDateLabel' in data) || (data.targetDateLabel is string && data.targetDateLabel.size() <= 30)) &&
+             data.iconKey is string && data.iconKey.size() >= 1 && data.iconKey.size() <= 20 &&
+             data.archived is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.userId == userId &&
+             data.idempotencyKey is string && data.idempotencyKey.size() >= 1 && data.idempotencyKey.size() <= 128 &&
+             data.sourceType == 'SANDBOX_PREVIEW' &&
+             data.merchantName is string && data.merchantName.size() >= 1 && data.merchantName.size() <= 80 &&
+             data.rawMerchantLabel is string && data.rawMerchantLabel.size() <= 100 &&
+             data.description is string && data.description.size() <= 120 &&
+             data.category in ['CAFE', 'FOOD_DELIVERY', 'GROCERY', 'SHOPPING', 'TRANSPORT', 'SUBSCRIPTIONS', 'UNCLEAR'] &&
+             data.purchaseAmountRupees is number && data.purchaseAmountRupees > 0 && data.purchaseAmountRupees <= 1000000 &&
+             data.purchaseEpochMillis is int && data.purchaseEpochMillis > 0 &&
+             data.weekOfMonth is int && data.weekOfMonth >= 1 && data.weekOfMonth <= 5 &&
+             data.currentMonth is bool &&
+             data.dateRangeBucket in ['THIS_WEEK', 'THIS_MONTH', 'PREVIOUS_MONTH'] &&
+             data.eventKind in ['PURCHASE', 'REFUND', 'REVERSAL', 'DELAYED_FEED'] &&
+             data.transferInstructionStatus in ['NOT_CREATED', 'SIMULATED_PREVIEW', 'BLOCKED_NO_PARTNER', 'FAILED_TEST', 'CANCELLED'] &&
+             data.transferConfirmationStatus in ['UNCONFIRMED_NO_PARTNER', 'NONE'] &&
+             data.userExcluded is bool &&
+             data.providerReference is string && data.providerReference.size() <= 64 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAuditLog(data, userId) {
+      return data.userId == userId &&
+             data.action is string && data.action.size() >= 1 && data.action.size() <= 60 &&
+             data.detail is string && data.detail.size() >= 1 && data.detail.size() <= 200 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidSupportTicket(data, userId) {
+      return data.userId == userId &&
+             data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 60 &&
+             data.message is string && data.message.size() >= 4 && data.message.size() <= 1000 &&
+             data.status == 'OPEN' &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'displayName', 'dataConsentAccepted', 'consentVersion',
+                         'providerConnectionStatus', 'notificationsEnabled', 'weeklyDigestEnabled',
+                         'roundUpTargetRupees', 'maxPerPurchaseRupees', 'weeklyCapRupees', 'monthlyCapRupees',
+                         'minTransactionAmountRupees', 'excludedCategories', 'excludedMerchants',
+                         'paused', 'selectedGoalId', 'monthlyGoalTargetRupees', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'displayName', 'dataConsentAccepted', 'consentVersion',
+                         'providerConnectionStatus', 'notificationsEnabled', 'weeklyDigestEnabled',
+                         'roundUpTargetRupees', 'maxPerPurchaseRupees', 'weeklyCapRupees', 'monthlyCapRupees',
+                         'minTransactionAmountRupees', 'excludedCategories', 'excludedMerchants',
+                         'paused', 'selectedGoalId', 'monthlyGoalTargetRupees', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserAccount(incoming(), userId);
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUserAccount(incoming(), userId) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'displayName', 'dataConsentAccepted', 'consentVersion',
+                         'notificationsEnabled', 'weeklyDigestEnabled',
+                         'roundUpTargetRupees', 'maxPerPurchaseRupees', 'weeklyCapRupees', 'monthlyCapRupees',
+                         'minTransactionAmountRupees', 'excludedCategories', 'excludedMerchants',
+                         'paused', 'selectedGoalId', 'monthlyGoalTargetRupees', 'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /goals/{goalId} {
+        allow get: if isOwner(userId) && isValidId(goalId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(goalId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'name', 'targetAmountRupees', 'confirmedBalanceRupees',
+                           'pendingTransferRupees', 'failedTransferCount', 'iconKey', 'archived',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'name', 'targetAmountRupees', 'confirmedBalanceRupees',
+                           'pendingTransferRupees', 'failedTransferCount', 'targetDateLabel',
+                           'iconKey', 'archived', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidGoal(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(goalId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidGoal(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'name', 'targetAmountRupees', 'targetDateLabel', 'iconKey', 'archived', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(goalId);
+      }
+
+      match /transactions/{txId} {
+        allow get: if isOwner(userId) && isValidId(txId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(txId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'idempotencyKey', 'sourceType', 'merchantName', 'rawMerchantLabel',
+                           'description', 'category', 'purchaseAmountRupees', 'purchaseEpochMillis',
+                           'weekOfMonth', 'currentMonth', 'dateRangeBucket', 'eventKind',
+                           'transferInstructionStatus', 'transferConfirmationStatus', 'userExcluded',
+                           'providerReference', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'idempotencyKey', 'sourceType', 'merchantName', 'rawMerchantLabel',
+                           'description', 'category', 'purchaseAmountRupees', 'purchaseEpochMillis',
+                           'weekOfMonth', 'currentMonth', 'dateRangeBucket', 'eventKind',
+                           'transferInstructionStatus', 'transferConfirmationStatus', 'userExcluded',
+                           'providerReference', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTransaction(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(txId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().idempotencyKey == existing().idempotencyKey &&
+                         incoming().sourceType == existing().sourceType &&
+                         isValidTransaction(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'userExcluded', 'transferInstructionStatus', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(txId);
+      }
+
+      match /auditLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(logId) &&
+                         incoming().keys().hasAll(['userId', 'action', 'detail', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'action', 'detail', 'createdAt']) &&
+                         isValidAuditLog(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+
+      match /supportTickets/{ticketId} {
+        allow get: if isOwner(userId) && isValidId(ticketId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(ticketId) &&
+                         incoming().keys().hasAll(['userId', 'topic', 'message', 'status', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'topic', 'message', 'status', 'createdAt']) &&
+                         isValidSupportTicket(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(ticketId);
+      }
+    }
+  }
+}

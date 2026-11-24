@@ -1,0 +1,179 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Authenticated user consent, notification preferences, saving rules, and connection status.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "Optional user display name" },
+        "dataConsentAccepted": { "type": "boolean", "description": "Whether user accepted data & product disclosures" },
+        "consentVersion": { "type": "string", "description": "Version identifier of accepted disclosure" },
+        "providerConnectionStatus": {
+          "type": "string",
+          "enum": ["NOT_CONNECTED"],
+          "description": "Partner link state; locked to NOT_CONNECTED until server partner integration"
+        },
+        "notificationsEnabled": { "type": "boolean" },
+        "weeklyDigestEnabled": { "type": "boolean" },
+        "roundUpTargetRupees": { "type": "integer", "description": "Round-up increment (10..500)" },
+        "maxPerPurchaseRupees": { "type": "number" },
+        "weeklyCapRupees": { "type": "number" },
+        "monthlyCapRupees": { "type": "number" },
+        "minTransactionAmountRupees": { "type": "number" },
+        "excludedCategories": { "type": "array" },
+        "excludedMerchants": { "type": "array" },
+        "paused": { "type": "boolean" },
+        "selectedGoalId": { "type": "string" },
+        "monthlyGoalTargetRupees": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "dataConsentAccepted",
+        "consentVersion",
+        "providerConnectionStatus",
+        "notificationsEnabled",
+        "weeklyDigestEnabled",
+        "roundUpTargetRupees",
+        "maxPerPurchaseRupees",
+        "weeklyCapRupees",
+        "monthlyCapRupees",
+        "minTransactionAmountRupees",
+        "excludedCategories",
+        "excludedMerchants",
+        "paused",
+        "selectedGoalId",
+        "monthlyGoalTargetRupees",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SavingsGoalDoc": {
+      "title": "SavingsGoalDoc",
+      "description": "User savings goal with confirmed balance locked to 0 without authorized partner settlement.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "targetAmountRupees": { "type": "number" },
+        "confirmedBalanceRupees": { "type": "number" },
+        "pendingTransferRupees": { "type": "number" },
+        "failedTransferCount": { "type": "integer" },
+        "targetDateLabel": { "type": "string" },
+        "iconKey": { "type": "string" },
+        "archived": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "name",
+        "targetAmountRupees",
+        "confirmedBalanceRupees",
+        "pendingTransferRupees",
+        "failedTransferCount",
+        "iconKey",
+        "archived",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AuditableTransactionDoc": {
+      "title": "AuditableTransactionDoc",
+      "description": "Auditable purchase, round-up calculation, and transfer state record in sandbox preview.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "idempotencyKey": { "type": "string" },
+        "sourceType": { "type": "string", "enum": ["SANDBOX_PREVIEW"] },
+        "merchantName": { "type": "string" },
+        "rawMerchantLabel": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "purchaseAmountRupees": { "type": "number" },
+        "purchaseEpochMillis": { "type": "integer" },
+        "weekOfMonth": { "type": "integer" },
+        "currentMonth": { "type": "boolean" },
+        "dateRangeBucket": { "type": "string" },
+        "eventKind": { "type": "string" },
+        "transferInstructionStatus": { "type": "string" },
+        "transferConfirmationStatus": { "type": "string" },
+        "userExcluded": { "type": "boolean" },
+        "providerReference": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "idempotencyKey",
+        "sourceType",
+        "merchantName",
+        "rawMerchantLabel",
+        "description",
+        "category",
+        "purchaseAmountRupees",
+        "purchaseEpochMillis",
+        "weekOfMonth",
+        "currentMonth",
+        "dateRangeBucket",
+        "eventKind",
+        "transferInstructionStatus",
+        "transferConfirmationStatus",
+        "userExcluded",
+        "providerReference",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AccountAuditLogDoc": {
+      "title": "AccountAuditLogDoc",
+      "description": "Immutable user-scoped audit log of consent, rule changes, and security actions.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "action": { "type": "string" },
+        "detail": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "action", "detail", "createdAt"]
+    },
+    "SupportTicketDoc": {
+      "title": "SupportTicketDoc",
+      "description": "User support or complaint submission stored securely under user scope.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "topic": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["OPEN"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "topic", "message", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Authenticated user account settings, consent state, and saving rules."
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/SavingsGoalDoc" },
+      "description": "User-owned savings goals."
+    },
+    "/users/{userId}/transactions/{txId}": {
+      "schema": { "$ref": "#/entities/AuditableTransactionDoc" },
+      "description": "Auditable sandbox transaction and round-up state records."
+    },
+    "/users/{userId}/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AccountAuditLogDoc" },
+      "description": "Recent account security and rule audit events."
+    },
+    "/users/{userId}/supportTickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/SupportTicketDoc" },
+      "description": "Support and grievance submissions."
+    }
+  }
+}
